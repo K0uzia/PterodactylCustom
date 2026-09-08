@@ -60,7 +60,9 @@ menu_install_component() {
         tunnel_configure "${CLOUDFLARE_TOKEN}"
       fi
       ;;
-    d) playit_install ;;
+    d)
+      playit_install
+      ;;
     0) return 0 ;;
     *) log_warn "Choix invalide." ;;
   esac

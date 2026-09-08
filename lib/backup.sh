@@ -87,18 +87,18 @@ stack_status() {
   echo
   print_panel_access_urls
   echo "=== Services ==="
-  for svc in nginx "php${PHP_VERSION}-fpm" mariadb redis-server pteroq docker wings cloudflared playit playit.service; do
+  for svc in nginx "php${PHP_VERSION}-fpm" mariadb redis-server pteroq docker wings; do
     if systemctl list-unit-files "${svc}" &>/dev/null || systemctl status "${svc}" &>/dev/null; then
       local state
       state="$(systemctl is-active "${svc}" 2>/dev/null || echo absent)"
       printf "  %-22s %s\n" "${svc}" "${state}"
     fi
   done
-  # playit peut avoir un nom d'unit variable
-  if systemctl list-units --type=service --all 2>/dev/null | grep -qi playit; then
-    echo "(détail playit)"
-    playit_status 2>/dev/null || true
+  if command -v cloudflared >/dev/null 2>&1; then
+    printf "  %-22s %s\n" "cloudflared" "$(systemctl is-active cloudflared 2>/dev/null || echo absent)"
   fi
+  # playit : résumé clair (pas de journalctl)
+  playit_diagnose || true
   echo
   echo "=== Disque ==="
   df -h / "${PANEL_DIR}" 2>/dev/null | awk 'NR==1 || /\/$|pterodactyl/'

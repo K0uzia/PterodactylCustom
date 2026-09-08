@@ -193,6 +193,26 @@ main() {
       load_env
       print_panel_access_urls
       ;;
+    playit)
+      need_root
+      load_env
+      case "${1:-status}" in
+        status|"" ) playit_diagnose || true ;;
+        setup)
+          playit_ensure_service
+          playit setup || playit || true
+          sleep 1
+          playit_diagnose || true
+          ;;
+        fix|repair)
+          playit_fix
+          ;;
+        *)
+          echo "Usage: ptero-stack playit [status|setup|fix]"
+          playit_diagnose || true
+          ;;
+      esac
+      ;;
     uninstall)
       cmd_uninstall "$@"
       ;;

@@ -238,12 +238,16 @@ wizard_full_install() {
   fi
 
   echo
-  echo "=============================================="
-  echo "  playit — claim agent"
-  echo "=============================================="
-  echo "Si playit affiche un lien de claim, ouvrez-le dans le navigateur."
-  echo "Puis créez des tunnels vers 127.0.0.1:<port_allocation>."
-  pause_enter
+  log_info "=== playit — vérification agent ==="
+  playit_ensure_service
+  sleep 1
+  local pcode=0
+  playit_diagnose || pcode=$?
+  if [[ "${pcode}" -ne 0 && -t 0 ]]; then
+    if prompt_yes_no "Corriger playit maintenant (start / claim / reset) ?" "y"; then
+      playit_fix
+    fi
+  fi
 
   echo
   log_ok "Installation guidée terminée (panel local, pas d'accès public)."
@@ -263,6 +267,7 @@ wizard_reconfigure() {
   echo "  3) Cloudflare Tunnel (optionnel — accès distant panel)"
   echo "  4) Wings config.yml"
   echo "  5) Compte admin Panel (nouveau user)"
+  echo "  6) playit (état / claim / fix offline)"
   echo "  0) Retour"
   local c
   read -r -p "Choix : " c
@@ -289,6 +294,12 @@ wizard_reconfigure() {
     5)
       wizard_collect_admin
       panel_create_admin
+      ;;
+    6)
+      playit_diagnose || true
+      if prompt_yes_no "Lancer correction / claim playit ?" "y"; then
+        playit_fix
+      fi
       ;;
     0) return 0 ;;
     *) log_warn "Choix invalide." ;;
