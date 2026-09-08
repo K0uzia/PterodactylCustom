@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # Fonctions communes pour ptero-stack
 
-PTERO_STACK_VERSION="1.1.6"
+PTERO_STACK_VERSION="1.1.7"
 
 # Couleurs (désactivées si pas un TTY)
 # $'...' pour de vrais codes ANSI (pas le littéral \033)
@@ -262,3 +262,67 @@ read_heredoc_until_end() {
   done
   printf '%s' "${out}"
 }
+
+# IPs LAN utilisables depuis un autre PC (exclut loopback / link-local)
+detect_lan_ips() {
+  local ip
+  # ip -4 route get 1.1.1.1 → IP source utilisée vers Internet (souvent la bonne)
+  if command -v ip >/dev/null 2>&1; then
+    ip="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')"
+    if [[ -n "${ip}" && "${ip}" != "127.0.0.1" ]]; then
+      echo "${ip}"
+    fi
+    # Autres IPv4 non loopback
+    ip -4 -o addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1
+  fi
+  hostname -I 2>/dev/null | tr ' ' '\n'
+}
+
+# Liste unique d'IPs LAN
+list_lan_ips() {
+  detect_lan_ips | awk 'NF && $0 !~ /^127\./ && $0 !~ /^169\.254\./' | awk '!seen[$0]++'
+}
+
+# Affiche clairement comment ouvrir le panel
+print_panel_access_urls() {
+  local primary ips ip ssh_user
+  ips="$(list_lan_ips)"
+  primary="$(echo "${ips}" | head -n1)"
+  ssh_user="${SUDO_USER:-${USER:-user}}"
+
+  echo
+  echo "=============================================="
+  echo "  Accès au Panel Pterodactyl"
+  echo "=============================================="
+  if [[ -n "${primary}" ]]; then
+    echo
+    echo "  >>> Sur votre PC (même réseau), ouvrez :"
+    echo "      http://${primary}"
+    echo
+    echo "  Autres IP détectées :"
+    while IFS= read -r ip; do
+      [[ -z "${ip}" || "${ip}" == "${primary}" ]] && continue
+      echo "      http://${ip}"
+    done <<< "${ips}"
+  else
+    echo "  (Aucune IP LAN détectée — vérifiez le réseau de la VM)"
+  fi
+  echo
+  echo "  Sur la VM uniquement : http://127.0.0.1"
+  echo "  (inutile depuis le navigateur de votre PC)"
+  echo
+  if [[ -n "${PANEL_DOMAIN:-}" && "${PANEL_DOMAIN}" != "panel.example.com" ]]; then
+    echo "  Domaine configuré : https://${PANEL_DOMAIN}"
+    echo "  (uniquement si DNS + Cloudflare Tunnel OK)"
+    echo
+  fi
+  if [[ -n "${primary}" ]]; then
+    echo "  Tunnel SSH depuis Windows (si IP LAN bloquée) :"
+    echo "    ssh -L 8080:127.0.0.1:80 ${ssh_user}@${primary}"
+    echo "    puis : http://127.0.0.1:8080"
+    echo
+  fi
+  echo "=============================================="
+  echo
+}
+

@@ -18,7 +18,7 @@ show_main_menu() {
   echo "  2) Mettre à jour (backup + panel/wings/CF/playit)"
   echo "  3) Modifier / reconfigurer"
   echo "  4) Sauvegarde"
-  echo "  5) État des services"
+  echo "  5) État des services + IP d'accès panel"
   echo "  6) Installer un composant seul"
   echo "  7) Déployer ce script dans /opt/ptero-stack"
   echo "  8) Désinstaller (soft)"

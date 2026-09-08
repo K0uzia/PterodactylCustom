@@ -210,6 +210,7 @@ panel_install() {
   panel_write_nginx
   panel_write_queue
   log_ok "Panel installé dans ${PANEL_DIR}"
+  print_panel_access_urls
 }
 
 panel_configure() {

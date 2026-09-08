@@ -186,6 +186,10 @@ main() {
     status)
       stack_status
       ;;
+    ip|urls|access)
+      load_env
+      print_panel_access_urls
+      ;;
     uninstall)
       cmd_uninstall "$@"
       ;;

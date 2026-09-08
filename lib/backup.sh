@@ -85,6 +85,7 @@ stack_status() {
   echo "Domain      : ${PANEL_DOMAIN}"
   echo "Backup dir  : ${BACKUP_DIR}"
   echo
+  print_panel_access_urls
   echo "=== Services ==="
   for svc in nginx "php${PHP_VERSION}-fpm" mariadb redis-server pteroq docker wings cloudflared playit playit.service; do
     if systemctl list-unit-files "${svc}" &>/dev/null || systemctl status "${svc}" &>/dev/null; then
