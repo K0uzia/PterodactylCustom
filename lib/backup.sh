@@ -126,6 +126,7 @@ deploy_self() {
     # Copie des fichiers du stack (sans .git)
     mkdir -p "${target}/lib" "${target}/config" "${target}/templates"
     cp -a "${STACK_ROOT}/ptero-stack.sh" "${target}/"
+    [[ -f "${STACK_ROOT}/repair-cli.sh" ]] && cp -a "${STACK_ROOT}/repair-cli.sh" "${target}/" || true
     cp -a "${STACK_ROOT}/lib/." "${target}/lib/"
     cp -a "${STACK_ROOT}/templates/." "${target}/templates/"
     cp -a "${STACK_ROOT}/config/stack.env.example" "${target}/config/"
@@ -143,8 +144,15 @@ deploy_self() {
     log_info "Déjà dans ${target}"
   fi
 
+  # Corriger CRLF (Windows) + droits d'exécution — cause fréquente de "command not found"
+  if command -v sed >/dev/null 2>&1; then
+    sed -i 's/\r$//' "${target}/ptero-stack.sh" "${target}/lib/"*.sh 2>/dev/null || true
+  fi
   chmod +x "${target}/ptero-stack.sh"
+  chmod +x "${target}/lib/"*.sh 2>/dev/null || true
   ln -sfn "${target}/ptero-stack.sh" /usr/local/bin/ptero-stack
+  hash -r 2>/dev/null || true
   log_ok "Symlink : /usr/local/bin/ptero-stack → ${target}/ptero-stack.sh"
-  echo "Utilisez : sudo ptero-stack status"
+  echo "Utilisez : sudo ptero-stack"
+  echo "Si erreur : sudo bash ${target}/ptero-stack.sh"
 }
