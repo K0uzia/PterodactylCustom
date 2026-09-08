@@ -4,7 +4,20 @@
 # Usage : sudo ptero-stack [commande] [args]
 set -euo pipefail
 
-STACK_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Résoudre les symlinks (ex: /usr/local/bin/ptero-stack → /opt/ptero-stack/ptero-stack.sh)
+_ptero_resolve_root() {
+  local src dir
+  src="${BASH_SOURCE[0]}"
+  while [[ -L "${src}" ]]; do
+    dir="$(cd "$(dirname "${src}")" && pwd)"
+    src="$(readlink "${src}")"
+    [[ "${src}" != /* ]] && src="${dir}/${src}"
+  done
+  cd "$(dirname "${src}")" && pwd
+}
+STACK_ROOT="$(_ptero_resolve_root)"
+unset -f _ptero_resolve_root
+
 # shellcheck source=lib/common.sh
 source "${STACK_ROOT}/lib/common.sh"
 # shellcheck source=lib/panel.sh
