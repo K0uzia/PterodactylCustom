@@ -11,30 +11,48 @@ playit_install() {
   fi
 
   # Activer le service si le package en fournit un
-  if systemctl list-unit-files 2>/dev/null | grep -q '^playit'; then
+  if systemctl list-unit-files --type=service 2>/dev/null | grep -q '^playit'; then
     local unit
     unit="$(systemctl list-unit-files --type=service 2>/dev/null | awk '/^playit/{print $1; exit}')"
     if [[ -n "${unit}" ]]; then
       systemctl enable --now "${unit}" || true
       log_ok "Service ${unit} activé."
     fi
-  elif systemctl list-unit-files 2>/dev/null | grep -q 'playit.service'; then
-    systemctl enable --now playit.service || true
   else
-    log_warn "Aucun unit systemd playit détecté — lancez 'playit' manuellement ou via le service fourni par le package."
+    log_warn "Aucun unit systemd playit détecté."
   fi
 
-  cat <<EOF
-
-${C_YELLOW}Étape manuelle playit${C_RESET}
-1. Si demandé, claim l'agent (lien affiché par 'playit' / logs du service)
-2. Dans le dashboard playit.gg, créez un tunnel TCP/UDP vers :
-     127.0.0.1:<port_allocation_Wings>
-3. Ne mettez PAS playit dans les conteneurs de jeux — un agent sur la VM suffit.
-4. Donnez l'adresse playit (xxx.ply.gg:port) aux joueurs.
-
-EOF
+  playit_show_claim
   log_ok "playit installé."
+}
+
+# Affiche le lien / code de claim (à coller sur playit.gg)
+playit_show_claim() {
+  echo
+  echo "=============================================="
+  echo "  playit — claim de l'agent"
+  echo "=============================================="
+  echo
+  echo "Sur la VM, lancez UNE de ces commandes :"
+  echo "  playit setup"
+  echo "  playit"
+  echo
+  echo "Un lien du type https://playit.gg/claim/... s'affiche."
+  echo "Ouvrez-le dans le navigateur (connecté à votre compte playit),"
+  echo "puis validez le claim."
+  echo
+  echo "Autres commandes utiles :"
+  echo "  sudo systemctl status playit"
+  echo "  playit attach          # voir l'état / logs live"
+  echo "  journalctl -u playit -n 50 --no-pager"
+  echo
+
+  if [[ -t 0 ]] && command -v playit >/dev/null 2>&1; then
+    if prompt_yes_no "Lancer 'playit setup' maintenant (affiche le claim) ?" "y"; then
+      # setup peut être interactif — laisser l'utilisateur voir le lien
+      playit setup || playit || true
+    fi
+  fi
 }
 
 playit_update() {
