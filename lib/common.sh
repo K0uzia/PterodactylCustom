@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # Fonctions communes pour ptero-stack
 
-PTERO_STACK_VERSION="1.1.3"
+PTERO_STACK_VERSION="1.1.4"
 
 # Couleurs (désactivées si pas un TTY)
 # $'...' pour de vrais codes ANSI (pas le littéral \033)

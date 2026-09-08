@@ -199,26 +199,29 @@ wizard_full_install() {
   log_info "=== Installation Panel ==="
   panel_install
 
-  echo
-  log_info "=== Installation Wings (Docker + binaire) ==="
-  wings_install_docker
-  wings_install_binary
-
-  echo
-  log_info "=== Installation playit ==="
-  playit_install
-
+  # Tunnel AVANT Wings — sinon un crash Wings laisse le token inutilisé
   if [[ "${do_cf}" == "1" && -n "${CLOUDFLARE_TOKEN:-}" ]]; then
     echo
     log_info "=== Cloudflare Tunnel ==="
-    tunnel_configure "${CLOUDFLARE_TOKEN}"
+    tunnel_configure "${CLOUDFLARE_TOKEN}" || log_warn "Tunnel Cloudflare en échec — menu → Modifier → Cloudflare."
   else
-    tunnel_install
+    tunnel_install || true
   fi
 
   echo
+  log_info "=== Installation Wings (Docker + binaire) ==="
+  wings_install_docker
+  if ! wings_install_binary; then
+    log_warn "Wings non installé — relancez plus tard : menu → Installer un composant → Wings"
+  fi
+
+  echo
+  log_info "=== Installation playit ==="
+  playit_install || log_warn "playit en échec — réessayez via le menu."
+
+  echo
   log_info "Le Panel doit être accessible pour générer config.yml Wings."
-  if [[ "${do_cf}" == "1" ]]; then
+  if systemctl is-active --quiet cloudflared 2>/dev/null; then
     echo "  URL : https://${PANEL_DOMAIN}"
   else
     echo "  URL locale : http://127.0.0.1 (Nginx port 80)"
@@ -226,7 +229,7 @@ wizard_full_install() {
   pause_enter
 
   if wizard_prompt_wings_config; then
-    wings_configure
+    wings_configure || true
   fi
 
   echo

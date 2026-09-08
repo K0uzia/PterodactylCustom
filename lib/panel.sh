@@ -130,73 +130,61 @@ panel_configure_env() {
 
 panel_apply_environment_cli() {
   cd "${PANEL_DIR}"
-  log_info "Configuration environnement Panel (non-interactive)..."
-  local url="https://${PANEL_DOMAIN}"
-  local tz="${APP_TIMEZONE:-Europe/Paris}"
-
-  # Options artisan (ignore les flags inconnus via fallback .env déjà écrit)
-  php artisan p:environment:setup \
-    --author="${ADMIN_EMAIL:-admin@${PANEL_DOMAIN}}" \
-    --url="${url}" \
-    --timezone="${tz}" \
-    --cache=redis \
-    --session=redis \
-    --queue=redis \
-    --redis-host=127.0.0.1 \
-    --redis-pass="" \
-    --redis-port=6379 \
-    --settings-ui=true \
-    2>/dev/null \
-    || log_warn "p:environment:setup CLI partiel — .env déjà renseigné."
-
-  php artisan p:environment:database \
-    --host="${DB_HOST}" \
-    --port="${DB_PORT}" \
-    --database="${DB_NAME}" \
-    --username="${DB_USER}" \
-    --password="${DB_PASSWORD}" \
-    2>/dev/null \
-    || log_warn "p:environment:database CLI partiel — .env DB déjà renseigné."
-
-  if [[ "${MAIL_MAILER:-mail}" == "smtp" ]]; then
-    php artisan p:environment:mail \
-      --driver=smtp \
-      --email="${MAIL_FROM:-noreply@${PANEL_DOMAIN}}" \
-      --from="${MAIL_FROM:-noreply@${PANEL_DOMAIN}}" \
-      --host="${MAIL_HOST}" \
-      --port="${MAIL_PORT}" \
-      --username="${MAIL_USERNAME}" \
-      --password="${MAIL_PASSWORD}" \
-      --encryption="${MAIL_ENCRYPTION:-tls}" \
-      2>/dev/null || true
-  else
-    php artisan p:environment:mail --driver=mail \
-      --email="noreply@${PANEL_DOMAIN}" \
-      --from="noreply@${PANEL_DOMAIN}" \
-      2>/dev/null || true
-  fi
-
+  log_info "Configuration environnement Panel (écriture .env, sans prompts)..."
+  # .env déjà injecté par panel_configure_env — on évite artisan interactif
+  # (p:environment:* pose encore des questions même avec des flags)
   panel_configure_env
+  set_env_file_key .env "APP_ENVIRONMENT_ONLY" "false"
+  # Désactiver télémétrie par défaut sauf config contraire
+  if ! grep -q '^PTERODACTYL_TELEMETRY_ENABLED=' .env 2>/dev/null; then
+    set_env_file_key .env "PTERODACTYL_TELEMETRY_ENABLED" "false"
+  fi
 }
 
 panel_create_admin() {
   cd "${PANEL_DIR}"
   if [[ -z "${ADMIN_EMAIL:-}" || -z "${ADMIN_USERNAME:-}" || -z "${ADMIN_PASSWORD:-}" ]]; then
-    log_info "Création admin interactive..."
-    php artisan p:user:make || log_warn "Utilisateur admin non créé."
+    log_info "Identifiants admin absents — skip (créez plus tard via menu)."
     return 0
   fi
+
+  # Déjà existant ? (réinstall)
+  local exists
+  exists="$(php artisan tinker --execute="echo \\Pterodactyl\\Models\\User::where('email','${ADMIN_EMAIL}')->orWhere('username','${ADMIN_USERNAME}')->exists() ? '1' : '0';" 2>/dev/null || true)"
+  # Fallback SQL direct si tinker échoue
+  if [[ "${exists}" != "1" ]] && command -v mysql >/dev/null 2>&1; then
+    local cnt
+    cnt="$(mysql -N -e "SELECT COUNT(*) FROM \`${DB_NAME}\`.users WHERE email='${ADMIN_EMAIL}' OR username='${ADMIN_USERNAME}';" 2>/dev/null || echo 0)"
+    [[ "${cnt}" != "0" && -n "${cnt}" ]] && exists="1"
+  fi
+  if [[ "${exists}" == "1" ]]; then
+    log_ok "Admin déjà présent (${ADMIN_USERNAME} / ${ADMIN_EMAIL}) — skip."
+    return 0
+  fi
+
   log_info "Création de l'admin ${ADMIN_USERNAME} <${ADMIN_EMAIL}>..."
-  php artisan p:user:make \
-    --email="${ADMIN_EMAIL}" \
-    --username="${ADMIN_USERNAME}" \
-    --name="${ADMIN_NAME:-Admin}" \
-    --password="${ADMIN_PASSWORD}" \
-    --admin=1 \
-    || {
-      log_warn "p:user:make avec flags a échoué — tentative interactive."
-      php artisan p:user:make || true
-    }
+  # Versions récentes : pas d'option --name (first/last en interactif seulement)
+  if php artisan p:user:make \
+      --email="${ADMIN_EMAIL}" \
+      --username="${ADMIN_USERNAME}" \
+      --password="${ADMIN_PASSWORD}" \
+      --admin=1 \
+      --no-interaction 2>/dev/null; then
+    log_ok "Admin créé."
+    return 0
+  fi
+
+  # Fallback sans --no-interaction
+  if php artisan p:user:make \
+      --email="${ADMIN_EMAIL}" \
+      --username="${ADMIN_USERNAME}" \
+      --password="${ADMIN_PASSWORD}" \
+      --admin=1; then
+    log_ok "Admin créé."
+    return 0
+  fi
+
+  log_warn "Création admin échouée — connectez-vous avec un compte existant ou menu → Modifier → Compte admin."
 }
 
 panel_install() {

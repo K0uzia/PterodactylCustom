@@ -24,21 +24,28 @@ wings_install_docker() {
 
 wings_install_binary() {
   log_info "Installation du binaire Wings..."
-  mkdir -p /etc/pterodactyl "${WINGS_CONFIG_DIR}"
+  mkdir -p /etc/pterodactyl "${WINGS_CONFIG_DIR}" /usr/local/bin
 
-  local arch
+  local arch wings_arch tmp
   arch="$(uname -m)"
-  local wings_arch="amd64"
+  wings_arch="amd64"
   case "${arch}" in
     x86_64|amd64) wings_arch="amd64" ;;
     aarch64|arm64) wings_arch="arm64" ;;
     *) die "Architecture non supportée pour Wings : ${arch}" ;;
   esac
 
-  curl -fsSL -o /usr/local/bin/wings \
-    "https://github.com/pterodactyl/wings/releases/latest/download/wings_linux_${wings_arch}" \
-    || die "Échec téléchargement Wings"
-  chmod u+x /usr/local/bin/wings
+  # Écrire dans un fichier temporaire puis installer
+  # (curl -o /usr/local/bin/wings échoue souvent : curl 23 / fichier verrouillé)
+  tmp="$(mktemp /tmp/wings.XXXXXX)"
+  if ! curl -fL --retry 3 --retry-delay 2 -o "${tmp}" \
+      "https://github.com/pterodactyl/wings/releases/latest/download/wings_linux_${wings_arch}"; then
+    rm -f "${tmp}"
+    die "Échec téléchargement Wings"
+  fi
+  systemctl stop wings 2>/dev/null || true
+  install -m 755 "${tmp}" /usr/local/bin/wings
+  rm -f "${tmp}"
 
   cat > /etc/systemd/system/wings.service <<'EOF'
 [Unit]
@@ -110,20 +117,25 @@ wings_configure() {
 
 wings_update() {
   log_info "Mise à jour de Wings..."
-  local arch
+  local arch wings_arch tmp
   arch="$(uname -m)"
-  local wings_arch="amd64"
+  wings_arch="amd64"
   case "${arch}" in
     x86_64|amd64) wings_arch="amd64" ;;
     aarch64|arm64) wings_arch="arm64" ;;
     *) die "Architecture non supportée : ${arch}" ;;
   esac
 
+  # Mise à jour Wings (même méthode tmp + install)
   systemctl stop wings 2>/dev/null || true
-  curl -fsSL -o /usr/local/bin/wings \
-    "https://github.com/pterodactyl/wings/releases/latest/download/wings_linux_${wings_arch}" \
-    || die "Échec téléchargement Wings"
-  chmod u+x /usr/local/bin/wings
+  tmp="$(mktemp /tmp/wings.XXXXXX)"
+  if ! curl -fL --retry 3 --retry-delay 2 -o "${tmp}" \
+      "https://github.com/pterodactyl/wings/releases/latest/download/wings_linux_${wings_arch}"; then
+    rm -f "${tmp}"
+    die "Échec téléchargement Wings"
+  fi
+  install -m 755 "${tmp}" /usr/local/bin/wings
+  rm -f "${tmp}"
 
   if [[ -f "${WINGS_CONFIG_DIR}/config.yml" ]]; then
     systemctl start wings
