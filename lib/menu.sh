@@ -6,7 +6,8 @@ show_banner() {
   cat <<EOF
 ${C_BLUE}╔══════════════════════════════════════════════════╗
 ║           ptero-stack ${PTERO_STACK_VERSION}                        ║
-║   Panel + Wings + Cloudflare + playit (Ubuntu)   ║
+║   Panel + Wings + playit (Ubuntu) — local     ║
+║   Cloudflare Tunnel = option menu 3 / 6       ║
 ╚══════════════════════════════════════════════════╝${C_RESET}
 
 EOF
@@ -31,7 +32,7 @@ menu_install_component() {
   echo
   echo "  a) Panel"
   echo "  b) Wings"
-  echo "  c) Cloudflare Tunnel"
+  echo "  c) Cloudflare Tunnel (optionnel)"
   echo "  d) playit"
   echo "  0) Retour"
   local c
@@ -84,11 +85,14 @@ run_interactive_menu() {
         need_root
         load_env
         detect_os
-        if confirm "Lancer update (backup automatique inclus) ?"; then
+        if confirm "Lancer update (backup + panel/wings/playit) ?"; then
           backup_create
           panel_update
           wings_update
-          tunnel_update
+          # Cloudflare seulement s'il est déjà installé
+          if command -v cloudflared >/dev/null 2>&1; then
+            tunnel_update
+          fi
           playit_update
           log_ok "Mise à jour terminée."
         fi

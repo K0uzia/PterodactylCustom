@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# ptero-stack — gestion Panel + Wings + Cloudflare Tunnel + playit (Ubuntu 22.04+)
+# ptero-stack — gestion Panel + Wings + playit (Ubuntu 22.04+)
+# Cloudflare Tunnel = optionnel (menu), pas dans l'install par défaut
 # Sans argument : menu interactif
 # Usage : sudo ptero-stack [commande] [args]
 set -euo pipefail
@@ -37,19 +38,19 @@ source "${STACK_ROOT}/lib/menu.sh"
 
 usage() {
   cat <<EOF
-ptero-stack ${PTERO_STACK_VERSION} — Pterodactyl + Cloudflare Tunnel + playit
+ptero-stack ${PTERO_STACK_VERSION} — Pterodactyl + playit (Cloudflare optionnel)
 
 Sans argument : menu interactif (recommandé)
 
 Usage:
   sudo ptero-stack
   sudo ptero-stack menu
-  sudo ptero-stack install | update | backup | status | uninstall
+  sudo ptero-stack install | update | backup | status | ip | uninstall
   sudo ptero-stack configure tunnel|wings|panel
   sudo ptero-stack deploy-self
 
-Le menu guide l'installation : domaine, DB, admin, commande Cloudflare
-(token), config.yml Wings, etc. — et écrit automatiquement stack.env / .env.
+Install guidée = Panel + Wings + playit en local (IP LAN).
+Cloudflare Tunnel = uniquement via le menu si vous le voulez plus tard.
 EOF
 }
 
@@ -113,7 +114,9 @@ cmd_update() {
       backup_create
       panel_update
       wings_update
-      tunnel_update
+      if command -v cloudflared >/dev/null 2>&1; then
+        tunnel_update
+      fi
       playit_update
       log_ok "Mise à jour globale terminée."
       ;;

@@ -191,7 +191,7 @@ wizard_prompt_wings_config() {
   return 0
 }
 
-# Installation complète guidée
+# Installation complète guidée (Panel + Wings + playit — sans Cloudflare)
 wizard_full_install() {
   need_root
   detect_os
@@ -202,8 +202,8 @@ wizard_full_install() {
   echo "║   Installation guidée ptero-stack          ║"
   echo "╚════════════════════════════════════════════╝"
   echo
-  log_info "Le script va demander toutes les infos nécessaires,"
-  log_info "copier stack.env, installer Panel/Wings/playit/tunnel."
+  log_info "Installation locale : Panel + Wings + playit."
+  log_info "Cloudflare Tunnel n'est PAS inclus (option menu 3 / 6 plus tard)."
   echo
   confirm "Démarrer l'installation ?" || { log_warn "Annulé."; return 1; }
 
@@ -211,23 +211,9 @@ wizard_full_install() {
   wizard_collect_admin
   wizard_collect_mail
 
-  local do_cf=0 do_wings_cfg=0
-  if wizard_prompt_cloudflare; then
-    do_cf=1
-  fi
-
   echo
   log_info "=== Installation Panel ==="
   panel_install
-
-  # Tunnel AVANT Wings — sinon un crash Wings laisse le token inutilisé
-  if [[ "${do_cf}" == "1" && -n "${CLOUDFLARE_TOKEN:-}" ]]; then
-    echo
-    log_info "=== Cloudflare Tunnel ==="
-    tunnel_configure "${CLOUDFLARE_TOKEN}" || log_warn "Tunnel Cloudflare en échec — menu → Modifier → Cloudflare."
-  else
-    tunnel_install || true
-  fi
 
   echo
   log_info "=== Installation Wings (Docker + binaire) ==="
@@ -241,7 +227,7 @@ wizard_full_install() {
   playit_install || log_warn "playit en échec — réessayez via le menu."
 
   echo
-  log_info "Le Panel doit être accessible pour générer config.yml Wings."
+  log_info "Le Panel doit être accessible (réseau local) pour générer config.yml Wings."
   print_panel_access_urls
   echo "  Pas d'accès pour l'instant ? Répondez n au collage YAML,"
   echo "  puis menu → 3 Modifier → Wings quand le panel marchera."
@@ -260,7 +246,8 @@ wizard_full_install() {
   pause_enter
 
   echo
-  log_ok "Installation guidée terminée."
+  log_ok "Installation guidée terminée (panel local, pas d'accès public)."
+  echo "  Cloudflare plus tard : menu → 6 → c  ou  menu → 3 → 3"
   stack_status
 }
 
@@ -273,7 +260,7 @@ wizard_reconfigure() {
   echo "Que souhaitez-vous modifier ?"
   echo "  1) Domaine / DB / chemins (stack.env)"
   echo "  2) Réappliquer Nginx + queue Panel"
-  echo "  3) Cloudflare Tunnel (commande / token)"
+  echo "  3) Cloudflare Tunnel (optionnel — accès distant panel)"
   echo "  4) Wings config.yml"
   echo "  5) Compte admin Panel (nouveau user)"
   echo "  0) Retour"

@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # Fonctions communes pour ptero-stack
 
-PTERO_STACK_VERSION="1.1.8"
+PTERO_STACK_VERSION="1.2.0"
 
 # Couleurs (désactivées si pas un TTY)
 # $'...' pour de vrais codes ANSI (pas le littéral \033)
@@ -329,16 +329,18 @@ print_panel_access_urls() {
   fi
   echo
   echo "  Sur la VM uniquement : http://127.0.0.1"
-  echo "  (inutile depuis le navigateur de votre PC)"
+  echo "  (ne fonctionne PAS dans le navigateur de votre PC)"
   echo
   if [[ -n "${PANEL_DOMAIN:-}" && "${PANEL_DOMAIN}" != "panel.example.com" ]]; then
     echo "  Config actuelle (APP_URL) : $(panel_app_url "${PANEL_DOMAIN}")"
     echo
   fi
   if [[ -n "${primary}" ]]; then
-    echo "  Tunnel SSH depuis Windows (si IP LAN bloquée) :"
+    echo "  Astuce SSH (même réseau / si vous avez déjà un accès SSH) :"
     echo "    ssh -L 8080:127.0.0.1:80 ${ssh_user}@${primary}"
-    echo "    puis : http://127.0.0.1:8080"
+    echo "    puis navigateur PC : http://127.0.0.1:8080"
+    echo "  Un ami hors de votre réseau ne peut PAS y accéder sans VPN"
+    echo "  (Tailscale, etc.) ou sans ouvrir le panel en public."
     echo
   fi
   echo "=============================================="

@@ -40,9 +40,9 @@ tunnel_install() {
   fi
   cat <<EOF
 
-${C_YELLOW}Configuration Cloudflare Tunnel${C_RESET}
-Public hostname : ${PANEL_DOMAIN} → http://127.0.0.1:80
-Puis menu → Modifier → Cloudflare, ou :
+${C_YELLOW}Cloudflare Tunnel (optionnel)${C_RESET}
+Non requis pour un panel 100% local.
+Public hostname (si vous configurez) : ${PANEL_DOMAIN} → http://127.0.0.1:80
   sudo ptero-stack configure tunnel
 
 EOF
