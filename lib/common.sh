@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # Fonctions communes pour ptero-stack
 
-PTERO_STACK_VERSION="1.1.7"
+PTERO_STACK_VERSION="1.1.8"
 
 # Couleurs (désactivées si pas un TTY)
 # $'...' pour de vrais codes ANSI (pas le littéral \033)
@@ -263,6 +263,26 @@ read_heredoc_until_end() {
   printf '%s' "${out}"
 }
 
+# True si valeur = adresse IPv4
+is_ipv4() {
+  [[ "${1:-}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
+}
+
+# APP_URL correct : http pour IP / .local, https pour vrai domaine
+panel_app_url() {
+  local host="${1:-${PANEL_DOMAIN}}"
+  if is_ipv4 "${host}" || [[ "${host}" == *.local ]] || [[ "${host}" == "localhost" ]] || [[ "${host}" == *.home ]] || [[ "${host}" == *.lan ]]; then
+    printf 'http://%s' "${host}"
+  else
+    printf 'https://%s' "${host}"
+  fi
+}
+
+# Première IP LAN (pour défaut domaine)
+primary_lan_ip() {
+  list_lan_ips | head -n1
+}
+
 # IPs LAN utilisables depuis un autre PC (exclut loopback / link-local)
 detect_lan_ips() {
   local ip
@@ -312,8 +332,7 @@ print_panel_access_urls() {
   echo "  (inutile depuis le navigateur de votre PC)"
   echo
   if [[ -n "${PANEL_DOMAIN:-}" && "${PANEL_DOMAIN}" != "panel.example.com" ]]; then
-    echo "  Domaine configuré : https://${PANEL_DOMAIN}"
-    echo "  (uniquement si DNS + Cloudflare Tunnel OK)"
+    echo "  Config actuelle (APP_URL) : $(panel_app_url "${PANEL_DOMAIN}")"
     echo
   fi
   if [[ -n "${primary}" ]]; then

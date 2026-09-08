@@ -105,8 +105,12 @@ panel_configure_env() {
   set_env_file_key .env "DB_DATABASE" "${DB_NAME}"
   set_env_file_key .env "DB_USERNAME" "${DB_USER}"
   set_env_file_key .env "DB_PASSWORD" "${DB_PASSWORD}"
-  set_env_file_key .env "APP_URL" "https://${PANEL_DOMAIN}"
+  set_env_file_key .env "APP_URL" "$(panel_app_url "${PANEL_DOMAIN}")"
   set_env_file_key .env "APP_TIMEZONE" "${APP_TIMEZONE:-Europe/Paris}"
+  # Trust Proxies / IP locale
+  if is_ipv4 "${PANEL_DOMAIN}"; then
+    set_env_file_key .env "APP_ENVIRONMENT" "production"
+  fi
 
   set_env_file_key .env "CACHE_DRIVER" "redis"
   set_env_file_key .env "SESSION_DRIVER" "redis"

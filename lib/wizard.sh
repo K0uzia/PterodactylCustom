@@ -12,8 +12,29 @@ wizard_collect_stack_config() {
   echo "=============================================="
   echo
 
-  PANEL_DOMAIN="$(prompt_value "Domaine ou hostname panel (ex: panel.local, IP, ou vrai domaine)" "${PANEL_DOMAIN}")"
-  echo "  Astuce : sans domaine public, utilisez panel.local ou l'IP LAN ; Cloudflare se configure plus tard."
+  local detected default_host
+  detected="$(primary_lan_ip)"
+  default_host="${PANEL_DOMAIN:-}"
+  # Remplacer les placeholders / faux domaines par l'IP LAN détectée
+  if [[ -z "${default_host}" \
+     || "${default_host}" == "panel.example.com" \
+     || "${default_host}" == *".example.com" \
+     || "${default_host}" == *".local" && -n "${detected}" ]]; then
+    default_host="${detected:-panel.local}"
+  fi
+  # Si l'utilisateur avait un "faux" domaine mais qu'on a une IP, proposer l'IP en défaut
+  if [[ -n "${detected}" ]] && ! is_ipv4 "${default_host}"; then
+    echo "  IP LAN détectée automatiquement : ${detected}"
+    echo "  (recommandé sans vrai DNS / Cloudflare)"
+    if prompt_yes_no "Utiliser cette IP comme adresse du panel ?" "y"; then
+      default_host="${detected}"
+    fi
+  elif [[ -n "${detected}" ]]; then
+    echo "  IP LAN détectée : ${detected}"
+  fi
+
+  PANEL_DOMAIN="$(prompt_value "IP ou domaine du panel" "${default_host}")"
+  echo "  APP_URL sera : $(panel_app_url "${PANEL_DOMAIN}")"
   APP_TIMEZONE="$(prompt_value "Timezone" "${APP_TIMEZONE:-Europe/Paris}")"
   PANEL_DIR="$(prompt_value "Répertoire du Panel" "${PANEL_DIR:-/var/www/pterodactyl}")"
   DB_NAME="$(prompt_value "Nom de la base MariaDB" "${DB_NAME:-panel}")"
