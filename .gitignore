@@ -1,0 +1,11 @@
+# Secrets / config locale
+config/stack.env
+
+# Backups locaux éventuels
+backups/
+*.sql
+*.tar.gz
+
+# OS
+.DS_Store
+Thumbs.db
