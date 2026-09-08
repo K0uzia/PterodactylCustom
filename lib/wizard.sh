@@ -221,11 +221,26 @@ wizard_full_install() {
 
   echo
   log_info "Le Panel doit être accessible pour générer config.yml Wings."
+  local lan_ips
+  lan_ips="$(hostname -I 2>/dev/null | xargs || true)"
   if systemctl is-active --quiet cloudflared 2>/dev/null; then
-    echo "  URL : https://${PANEL_DOMAIN}"
-  else
-    echo "  URL locale : http://127.0.0.1 (Nginx port 80)"
+    echo "  Tunnel CF : https://${PANEL_DOMAIN}"
+    echo "  (uniquement si le domaine est réellement géré dans Cloudflare DNS)"
   fi
+  echo "  Sur cette VM :  http://127.0.0.1"
+  if [[ -n "${lan_ips}" ]]; then
+    echo "  Depuis votre PC (même réseau) :"
+    for ip in ${lan_ips}; do
+      echo "    http://${ip}"
+    done
+  fi
+  echo
+  echo "  Si vous êtes en SSH depuis Windows (PowerShell) :"
+  echo "    ssh -L 8080:127.0.0.1:80 ${SUDO_USER:-user}@<IP_VM>"
+  echo "    puis navigateur : http://127.0.0.1:8080"
+  echo
+  echo "  Pas d'accès pour l'instant ? Répondez n au collage YAML,"
+  echo "  puis menu → 3 Modifier → Wings quand le panel marchera."
   pause_enter
 
   if wizard_prompt_wings_config; then
