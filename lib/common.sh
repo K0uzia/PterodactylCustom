@@ -1,23 +1,24 @@
 # shellcheck shell=bash
 # Fonctions communes pour ptero-stack
 
-PTERO_STACK_VERSION="1.1.0"
+PTERO_STACK_VERSION="1.1.1"
 
 # Couleurs (désactivées si pas un TTY)
+# $'...' pour de vrais codes ANSI (pas le littéral \033)
 if [[ -t 1 ]]; then
-  C_RESET='\033[0m'
-  C_RED='\033[0;31m'
-  C_GREEN='\033[0;32m'
-  C_YELLOW='\033[0;33m'
-  C_BLUE='\033[0;34m'
+  C_RESET=$'\033[0m'
+  C_RED=$'\033[0;31m'
+  C_GREEN=$'\033[0;32m'
+  C_YELLOW=$'\033[0;33m'
+  C_BLUE=$'\033[0;34m'
 else
   C_RESET='' C_RED='' C_GREEN='' C_YELLOW='' C_BLUE=''
 fi
 
-log_info()  { echo -e "${C_BLUE}[INFO]${C_RESET} $*"; }
-log_ok()    { echo -e "${C_GREEN}[OK]${C_RESET} $*"; }
-log_warn()  { echo -e "${C_YELLOW}[WARN]${C_RESET} $*"; }
-log_error() { echo -e "${C_RED}[ERROR]${C_RESET} $*" >&2; }
+log_info()  { printf '%s\n' "${C_BLUE}[INFO]${C_RESET} $*"; }
+log_ok()    { printf '%s\n' "${C_GREEN}[OK]${C_RESET} $*"; }
+log_warn()  { printf '%s\n' "${C_YELLOW}[WARN]${C_RESET} $*"; }
+log_error() { printf '%s\n' "${C_RED}[ERROR]${C_RESET} $*" >&2; }
 
 die() {
   log_error "$*"
@@ -76,11 +77,7 @@ load_env() {
 ensure_db_password() {
   if [[ -z "${DB_PASSWORD:-}" ]]; then
     DB_PASSWORD="$(openssl rand -base64 24 | tr -d '/+=' | head -c 24)"
-    if grep -q '^DB_PASSWORD=' "${STACK_ENV_FILE}" 2>/dev/null; then
-      sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|" "${STACK_ENV_FILE}"
-    else
-      echo "DB_PASSWORD=${DB_PASSWORD}" >> "${STACK_ENV_FILE}"
-    fi
+    set_stack_env "DB_PASSWORD" "${DB_PASSWORD}"
     log_ok "DB_PASSWORD généré et enregistré dans config/stack.env"
   fi
 }
@@ -175,7 +172,27 @@ prompt_yes_no() {
   [[ "${reply}" =~ ^[Yy]$ ]]
 }
 
-# Écrit ou met à jour une clé dans stack.env
+# Écrit ou met à jour KEY=val dans un fichier env (sans sed — safe avec / et &)
+set_env_file_key() {
+  local file="$1"
+  local key="$2"
+  local val="$3"
+  local tmp
+  [[ -f "${file}" ]] || touch "${file}"
+  tmp="$(mktemp)"
+  if grep -q "^${key}=" "${file}" 2>/dev/null; then
+    awk -v key="${key}" -v val="${val}" '
+      index($0, key "=") == 1 { print key "=" val; next }
+      { print }
+    ' "${file}" > "${tmp}"
+    mv "${tmp}" "${file}"
+  else
+    rm -f "${tmp}"
+    printf '%s=%s\n' "${key}" "${val}" >> "${file}"
+  fi
+}
+
+# Écrit ou met à jour une clé dans stack.env (sans sed — safe avec / et &)
 set_stack_env() {
   local key="$1"
   local val="$2"
@@ -187,14 +204,7 @@ set_stack_env() {
       touch "${STACK_ENV_FILE}"
     fi
   fi
-  # Échapper pour sed
-  local escaped
-  escaped="$(printf '%s' "${val}" | sed -e 's/[\/&]/s/\\&/g')"
-  if grep -q "^${key}=" "${STACK_ENV_FILE}" 2>/dev/null; then
-    sed -i "s|^${key}=.*|${key}=${escaped}|" "${STACK_ENV_FILE}"
-  else
-    echo "${key}=${val}" >> "${STACK_ENV_FILE}"
-  fi
+  set_env_file_key "${STACK_ENV_FILE}" "${key}" "${val}"
 }
 
 ensure_stack_env_file() {

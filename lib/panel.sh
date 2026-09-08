@@ -99,67 +99,28 @@ panel_configure_env() {
   [[ -f .env ]] || cp .env.example .env
   log_ok ".env présent (copié depuis .env.example si besoin)"
 
-  # Valeurs DB de base dans .env (évite les erreurs si setup interactif partiel)
-  if grep -q '^DB_CONNECTION=' .env; then
-    sed -i "s|^DB_CONNECTION=.*|DB_CONNECTION=mysql|" .env
-  else
-    echo "DB_CONNECTION=mysql" >> .env
-  fi
-  for pair in \
-    "DB_HOST=${DB_HOST}" \
-    "DB_PORT=${DB_PORT}" \
-    "DB_DATABASE=${DB_NAME}" \
-    "DB_USERNAME=${DB_USER}" \
-    "DB_PASSWORD=${DB_PASSWORD}" \
-    "APP_URL=https://${PANEL_DOMAIN}" \
-    "APP_TIMEZONE=${APP_TIMEZONE:-Europe/Paris}"; do
-    local key="${pair%%=*}"
-    local val="${pair#*=}"
-    if grep -q "^${key}=" .env; then
-      # Escape & for sed
-      local escaped
-      escaped="$(printf '%s' "${val}" | sed -e 's/[\/&]/s/\\&/g')"
-      sed -i "s|^${key}=.*|${key}=${escaped}|" .env
-    else
-      echo "${key}=${val}" >> .env
-    fi
-  done
+  set_env_file_key .env "DB_CONNECTION" "mysql"
+  set_env_file_key .env "DB_HOST" "${DB_HOST}"
+  set_env_file_key .env "DB_PORT" "${DB_PORT}"
+  set_env_file_key .env "DB_DATABASE" "${DB_NAME}"
+  set_env_file_key .env "DB_USERNAME" "${DB_USER}"
+  set_env_file_key .env "DB_PASSWORD" "${DB_PASSWORD}"
+  set_env_file_key .env "APP_URL" "https://${PANEL_DOMAIN}"
+  set_env_file_key .env "APP_TIMEZONE" "${APP_TIMEZONE:-Europe/Paris}"
 
-  # Redis par défaut
-  for pair in \
-    "CACHE_DRIVER=redis" \
-    "SESSION_DRIVER=redis" \
-    "QUEUE_CONNECTION=redis" \
-    "REDIS_HOST=127.0.0.1"; do
-    local key="${pair%%=*}"
-    local val="${pair#*=}"
-    if grep -q "^${key}=" .env; then
-      sed -i "s|^${key}=.*|${key}=${val}|" .env
-    else
-      echo "${key}=${val}" >> .env
-    fi
-  done
+  set_env_file_key .env "CACHE_DRIVER" "redis"
+  set_env_file_key .env "SESSION_DRIVER" "redis"
+  set_env_file_key .env "QUEUE_CONNECTION" "redis"
+  set_env_file_key .env "REDIS_HOST" "127.0.0.1"
 
-  # Mail si fourni par le wizard
   if [[ -n "${MAIL_MAILER:-}" ]]; then
-    for pair in \
-      "MAIL_MAILER=${MAIL_MAILER}" \
-      "MAIL_HOST=${MAIL_HOST:-}" \
-      "MAIL_PORT=${MAIL_PORT:-}" \
-      "MAIL_USERNAME=${MAIL_USERNAME:-}" \
-      "MAIL_PASSWORD=${MAIL_PASSWORD:-}" \
-      "MAIL_ENCRYPTION=${MAIL_ENCRYPTION:-}" \
-      "MAIL_FROM_ADDRESS=${MAIL_FROM:-noreply@${PANEL_DOMAIN}}"; do
-      local key="${pair%%=*}"
-      local val="${pair#*=}"
-      if grep -q "^${key}=" .env; then
-        local escaped
-        escaped="$(printf '%s' "${val}" | sed -e 's/[\/&]/s/\\&/g')"
-        sed -i "s|^${key}=.*|${key}=${escaped}|" .env
-      else
-        echo "${key}=${val}" >> .env
-      fi
-    done
+    set_env_file_key .env "MAIL_MAILER" "${MAIL_MAILER}"
+    set_env_file_key .env "MAIL_HOST" "${MAIL_HOST:-}"
+    set_env_file_key .env "MAIL_PORT" "${MAIL_PORT:-}"
+    set_env_file_key .env "MAIL_USERNAME" "${MAIL_USERNAME:-}"
+    set_env_file_key .env "MAIL_PASSWORD" "${MAIL_PASSWORD:-}"
+    set_env_file_key .env "MAIL_ENCRYPTION" "${MAIL_ENCRYPTION:-}"
+    set_env_file_key .env "MAIL_FROM_ADDRESS" "${MAIL_FROM:-noreply@${PANEL_DOMAIN}}"
   fi
 
   if ! grep -q '^APP_KEY=base64:' .env; then

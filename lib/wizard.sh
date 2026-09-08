@@ -12,7 +12,8 @@ wizard_collect_stack_config() {
   echo "=============================================="
   echo
 
-  PANEL_DOMAIN="$(prompt_value "Domaine public du panel (Cloudflare)" "${PANEL_DOMAIN}")"
+  PANEL_DOMAIN="$(prompt_value "Domaine ou hostname panel (ex: panel.local, IP, ou vrai domaine)" "${PANEL_DOMAIN}")"
+  echo "  Astuce : sans domaine public, utilisez panel.local ou l'IP LAN ; Cloudflare se configure plus tard."
   APP_TIMEZONE="$(prompt_value "Timezone" "${APP_TIMEZONE:-Europe/Paris}")"
   PANEL_DIR="$(prompt_value "Répertoire du Panel" "${PANEL_DIR:-/var/www/pterodactyl}")"
   DB_NAME="$(prompt_value "Nom de la base MariaDB" "${DB_NAME:-panel}")"
